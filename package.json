@@ -1,0 +1,21 @@
+{
+  "name": "quan-ly-can-tin",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "shared"
+  ],
+  "scripts": {
+    "install:all": "npm install",
+    "dev": "concurrently \"npm run dev -w apps/backend\" \"npm run dev -w apps/frontend\"",
+    "build": "npm run build -w shared && npm run build -w apps/backend && npm run build -w apps/frontend",
+    "db:migrate": "npm run db:migrate -w apps/backend",
+    "db:seed": "npm run db:seed -w apps/backend",
+    "electron:pack": "npm run electron:pack -w apps/frontend"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "electron": "^31.0.2"
+  }
+}

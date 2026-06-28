@@ -1,0 +1,1 @@
+node_modules/\ndist/\ndist-electron/\n*.js.map\n*.d.ts\n*.d.ts.map\n.env\nseed-expected-report.json
