@@ -8,6 +8,7 @@ import {
   HistoryOutlined,
 } from '@ant-design/icons';
 import { devLogin } from './api/client';
+import { useAuthStore } from './stores/authStore';
 import ErrorBoundary from './components/ErrorBoundary';
 import ConnectionStatus from './components/ConnectionStatus';
 import MasterDataPage from './features/master-data/MasterDataPage';
@@ -15,6 +16,7 @@ import PosPage from './features/pos/PosPage';
 import InventoryPage from './features/inventory/InventoryPage';
 import SalesReportPage from './features/reports/SalesReportPage';
 import OrderHistoryPage from './features/orders/OrderHistoryPage';
+import LoginPage from './features/auth/LoginPage';
 import { useUiStore } from './stores/uiStore';
 
 const { Sider, Content, Header } = Layout;
@@ -37,12 +39,15 @@ const labels: Record<string, string> = {
 
 function App() {
   const { activeTab, setActiveTab } = useUiStore();
+  const { token } = useAuthStore();
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
     if (import.meta.env.DEV) {
+      // Dev: tự động login admin/admin để tiện testing
       devLogin().finally(() => setReady(true));
     } else {
+      // Production: chờ user đăng nhập qua LoginPage
       setReady(true);
     }
   }, []);
@@ -59,6 +64,11 @@ function App() {
     );
   }
 
+  // Production: chưa đăng nhập → hiển thị LoginPage
+  if (!import.meta.env.DEV && !token) {
+    return <LoginPage />;
+  }
+
   return (
     <ErrorBoundary>
       <Layout style={{ minHeight: '100vh' }}>
@@ -70,7 +80,7 @@ function App() {
             mode="inline"
             selectedKeys={[activeTab]}
             items={items}
-            onClick={({ key }) => setActiveTab(key)}
+            onClick={({ key }) => setActiveTab(key as 'master' | 'pos' | 'orders' | 'inventory' | 'report')}
             style={{ borderRight: 0 }}
           />
         </Sider>
