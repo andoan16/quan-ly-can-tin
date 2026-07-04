@@ -39,6 +39,7 @@ model User {
   performanceReports    ProductPerformanceReport[]
   topupTransactions     TopupTransaction[]
   stockCounts          StockCount[]
+  feedbacks            Feedback[]
 
   @@map("users")
 }
@@ -278,6 +279,30 @@ model ProductPerformanceReportItem {
 
   @@index([reportId])
   @@map("product_performance_report_items")
+}
+
+enum FeedbackType {
+  BUG
+  IMPROVEMENT
+}
+
+enum FeedbackStatus {
+  NEW
+  DONE
+}
+
+model Feedback {
+  id        String          @id @default(uuid()) @db.Uuid
+  type      FeedbackType
+  content   String          @db.Text
+  status    FeedbackStatus  @default(NEW)
+  createdBy String          @db.Uuid
+  createdAt DateTime        @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime        @updatedAt @db.Timestamptz(6)
+
+  createdByUser User @relation(fields: [createdBy], references: [id])
+
+  @@map("feedbacks")
 }
 
 model AuditLog {

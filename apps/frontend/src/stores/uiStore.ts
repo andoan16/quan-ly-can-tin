@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-type TabKey = 'master' | 'pos' | 'orders' | 'inventory' | 'report';
+type TabKey = 'master' | 'pos' | 'orders' | 'inventory' | 'report' | 'feedback';
 
 interface UiState {
   activeTab: TabKey;

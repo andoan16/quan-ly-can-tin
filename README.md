@@ -11,8 +11,20 @@
 - **Chuyển đổi đơn vị** — 1 thùng = 30 gói, tự động quy đổi khi bán/nhập; tạo base + bundle trong 1 form
 - **Báo cáo hiệu suất bán hàng** — thống kê doanh thu, lợi nhuận, biên lợi nhuận theo sản phẩm; bộ lọc theo khoảng ngày, danh mục; sắp xếp theo doanh thu/lợi nhuận/số lượng/tên; lưu/xem/xóa snapshot báo cáo
 - **Danh mục, đơn vị, khách hàng** — master data CRUD
+- **Feedback / Góp ý** — bảng editable ghi nhận bug và đề xuất cải thiện (loại BUG/Cải thiện, trạng thái Mới/Hoàn thành, row Hoàn thành tô xanh)
 - **Phân quyền** — ADMIN, MANAGER, CASHIER, WAREHOUSE
 - **Logging toàn diện (log4js)** — ghi lại HTTP requests, SQL queries, CRUD mutations, order/topup/stock operations, auth, validation errors, error stack traces (xem section Logging)
+
+## Ảnh chụp màn hình
+
+| Tính năng | Ảnh |
+|-----------|-----|
+| Master Data (sản phẩm, danh mục, đơn vị, khách hàng) | ![Master Data](screenshots/01_master-data.png) |
+| Bán hàng (POS) | ![POS](screenshots/02_pos.png) |
+| Lịch sử đơn hàng | ![Lịch sử đơn](screenshots/03_order-history.png) |
+| Tồn kho (nhập/xuất/kiểm kê) | ![Tồn kho](screenshots/04_inventory.png) |
+| Báo cáo bán hàng | ![Báo cáo](screenshots/05_sales-report.png) |
+| Feedback / Góp ý | ![Feedback](screenshots/06_feedback.png) |
 
 ## Kiến trúc
 
@@ -177,10 +189,11 @@ npm run electron:pack  # đóng gói Electron app
 | `/api/v1/stock-counts`   | Kiểm kê (tạo, cập nhật số thực, finalize) |
 | `/api/v1/reports`         | Hiệu suất bán hàng (product-sales), doanh thu theo ngày (daily-sales) |
 | `/api/v1/reports/saved`  | Báo cáo đã lưu (CRUD snapshot)    |
+| `/api/v1/feedback`      | Feedback / Góp ý (CRUD, bulk update) |
 
 ## Data model
 
-Các entity chính: **User**, **Customer**, **CustomerGroup**, **Category**, **Unit**, **Product**, **Order**, **OrderItem**, **InventoryTransaction**, **TopupTransaction**, **StockCount**, **StockCountItem**, **ProductPerformanceReport**, **ProductPerformanceReportItem**, **AuditLog**.
+Các entity chính: **User**, **Customer**, **CustomerGroup**, **Category**, **Unit**, **Product**, **Order**, **OrderItem**, **InventoryTransaction**, **TopupTransaction**, **StockCount**, **StockCountItem**, **ProductPerformanceReport**, **ProductPerformanceReportItem**, **Feedback**, **AuditLog**.
 
 Xem chi tiết trong `apps/backend/prisma/schema.prisma`.
 

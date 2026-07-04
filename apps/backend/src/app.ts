@@ -12,6 +12,7 @@ import { orderRouter } from './routes/orders.routes';
 import { inventoryRouter } from './routes/inventory.routes';
 import { reportRouter } from './routes/reports.routes';
 import { stockCountRouter } from './routes/stock-count.routes';
+import { feedbackRouter } from './routes/feedback.routes';
 import { errorHandler } from './middleware/errorHandler';
 import { httpLogger } from './logger';
 
@@ -72,6 +73,7 @@ export function createApp() {
   app.use('/api/v1/inventory', inventoryRouter);
   app.use('/api/v1/reports', reportRouter);
   app.use('/api/v1/stock-counts', stockCountRouter);
+  app.use('/api/v1/feedback', feedbackRouter);
 
   app.use(errorHandler);
 

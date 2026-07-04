@@ -6,6 +6,7 @@ import {
   StockOutlined,
   BarChartOutlined,
   HistoryOutlined,
+  MessageOutlined,
 } from '@ant-design/icons';
 import { devLogin } from './api/client';
 import { useAuthStore } from './stores/authStore';
@@ -16,6 +17,7 @@ import PosPage from './features/pos/PosPage';
 import InventoryPage from './features/inventory/InventoryPage';
 import SalesReportPage from './features/reports/SalesReportPage';
 import OrderHistoryPage from './features/orders/OrderHistoryPage';
+import FeedbackTab from './features/feedback/FeedbackTab';
 import LoginPage from './features/auth/LoginPage';
 import { useUiStore } from './stores/uiStore';
 
@@ -27,6 +29,7 @@ const menuItems = [
   { key: 'orders', icon: <HistoryOutlined />, label: 'Lịch sử đơn' },
   { key: 'inventory', icon: <StockOutlined />, label: 'Tồn kho' },
   { key: 'report', icon: <BarChartOutlined />, label: 'Báo cáo' },
+  { key: 'feedback', icon: <MessageOutlined />, label: 'Feedback' },
 ];
 
 const labels: Record<string, string> = {
@@ -35,6 +38,7 @@ const labels: Record<string, string> = {
   orders: 'Lịch sử đơn hàng',
   inventory: 'Tồn kho',
   report: 'Báo cáo bán hàng',
+  feedback: 'Feedback / Góp ý',
 };
 
 function App() {
@@ -80,7 +84,7 @@ function App() {
             mode="inline"
             selectedKeys={[activeTab]}
             items={items}
-            onClick={({ key }) => setActiveTab(key as 'master' | 'pos' | 'orders' | 'inventory' | 'report')}
+            onClick={({ key }) => setActiveTab(key as 'master' | 'pos' | 'orders' | 'inventory' | 'report' | 'feedback')}
             style={{ borderRight: 0 }}
           />
         </Sider>
@@ -98,6 +102,7 @@ function App() {
                 {activeTab === 'orders' && <OrderHistoryPage />}
                 {activeTab === 'inventory' && <InventoryPage />}
                 {activeTab === 'report' && <SalesReportPage />}
+                {activeTab === 'feedback' && <FeedbackTab />}
               </ErrorBoundary>
             </div>
           </Content>

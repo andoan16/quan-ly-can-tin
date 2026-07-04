@@ -332,3 +332,34 @@ export const stockCountApi = {
   finalize: (id: string) => api.post<{ data: StockCount }>(`/stock-counts/${id}/finalize`),
   delete: (id: string) => api.delete<{ success: boolean }>(`/stock-counts/${id}`),
 };
+
+// ── Feedback (Góp ý / Báo lỗi) ─────────────────────────────────
+export type FeedbackType = 'BUG' | 'IMPROVEMENT';
+export type FeedbackStatus = 'NEW' | 'DONE';
+
+export interface Feedback {
+  id: string;
+  type: FeedbackType;
+  content: string;
+  status: FeedbackStatus;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+  createdByUser?: { id: string; fullName: string };
+}
+
+export interface FeedbackBulkItem {
+  id?: string;
+  type: FeedbackType;
+  content: string;
+  status: FeedbackStatus;
+}
+
+export const feedbackApi = {
+  list: () => api.get<{ data: Feedback[] }>('/feedback'),
+  create: (data: { type: FeedbackType; content: string; status?: FeedbackStatus }) =>
+    api.post<{ data: Feedback }>('/feedback', data),
+  bulkUpdate: (items: FeedbackBulkItem[]) =>
+    api.put<{ data: { id: string; type: string; content: string; status: string; action: string }[] }>('/feedback', { items }),
+  delete: (id: string) => api.delete<{ success: boolean }>(`/feedback/${id}`),
+};
