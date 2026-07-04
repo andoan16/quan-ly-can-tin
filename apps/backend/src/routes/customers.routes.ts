@@ -272,3 +272,30 @@ customerRouter.get('/:id/topups', async (req, res, next) => {
     next(err);
   }
 });
+
+// GET /customers/:id/orders — lịch sử chi tiêu (đơn hàng của khách)
+customerRouter.get('/:id/orders', async (req, res, next) => {
+  try {
+    const { id } = uuidParam.parse(req.params);
+    const page = Math.max(1, Number(req.query.page) || 1);
+    const size = Math.max(1, Math.min(100, Number(req.query.size) || 20));
+
+    const [items, total] = await Promise.all([
+      prisma.order.findMany({
+        where: { customerId: id },
+        include: {
+          cashier: { select: { id: true, fullName: true } },
+          items: { include: { product: { select: { id: true, code: true, name: true } } } },
+        },
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * size,
+        take: size,
+      }),
+      prisma.order.count({ where: { customerId: id } }),
+    ]);
+
+    res.json({ success: true, data: { items, total, page, size } });
+  } catch (err) {
+    next(err);
+  }
+});

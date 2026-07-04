@@ -9,6 +9,7 @@
   "scripts": {
     "install:all": "npm install",
     "dev": "concurrently \"npm run dev -w apps/backend\" \"npm run dev -w apps/frontend\"",
+    "prod": "npm run build && concurrently \"npm run start -w apps/backend\" \"npm run preview -w apps/frontend\"",
     "build": "npm run build -w shared && npm run build -w apps/backend && npm run build -w apps/frontend",
     "db:migrate": "npm run db:migrate -w apps/backend",
     "db:seed": "npm run db:seed -w apps/backend",

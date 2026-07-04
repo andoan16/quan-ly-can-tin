@@ -15,6 +15,7 @@ import PosPage from './features/pos/PosPage';
 import InventoryPage from './features/inventory/InventoryPage';
 import SalesReportPage from './features/reports/SalesReportPage';
 import OrderHistoryPage from './features/orders/OrderHistoryPage';
+import { useUiStore } from './stores/uiStore';
 
 const { Sider, Content, Header } = Layout;
 
@@ -35,12 +36,8 @@ const labels: Record<string, string> = {
 };
 
 function App() {
-  const [activeTab, setActiveTab] = useState(() => localStorage.getItem('activeTab') || 'pos');
+  const { activeTab, setActiveTab } = useUiStore();
   const [ready, setReady] = useState(false);
-
-  useEffect(() => {
-    localStorage.setItem('activeTab', activeTab);
-  }, [activeTab]);
 
   useEffect(() => {
     if (import.meta.env.DEV) {

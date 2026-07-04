@@ -150,6 +150,8 @@ export const customerApi = {
     api.post<{ data: TopupTransaction & { customer: Customer } }>(`/customers/${id}/topup`, payload),
   topups: (id: string, params?: { page?: number; size?: number }) =>
     api.get<{ data: Paginated<TopupTransaction> }>(`/customers/${id}/topups`, { params }),
+  orders: (id: string, params?: { page?: number; size?: number }) =>
+    api.get<{ data: Paginated<Order> }>(`/customers/${id}/orders`, { params }),
   import: (file: File) => {
     const formData = new FormData();
     formData.append('file', file);

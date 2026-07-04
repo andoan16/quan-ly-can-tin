@@ -1,14 +1,27 @@
 import { getApiErrorMessage } from '@/api/client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Table, Button, Input, Space, Modal, Form, Switch, message, Tag, InputNumber, Drawer, Descriptions, List, Typography, Upload, Alert } from 'antd';
-import { PlusOutlined, WalletOutlined, HistoryOutlined, UploadOutlined, DownloadOutlined, ReloadOutlined } from '@ant-design/icons';
+import { PlusOutlined, WalletOutlined, HistoryOutlined, UploadOutlined, DownloadOutlined, ReloadOutlined, EyeOutlined } from '@ant-design/icons';
 import type { UploadProps } from 'antd';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { customerApi } from '@/api/endpoints';
-import type { Customer, TopupTransaction } from '@/api/endpoints';
+import type { Customer, TopupTransaction, Order } from '@/api/endpoints';
+import { useUiStore } from '@/stores/uiStore';
 import dayjs from 'dayjs';
 
 const { Text } = Typography;
+
+type HistoryItem = {
+  id: string;
+  type: 'topup' | 'order';
+  orderId?: string; // chỉ cho type='order' — dùng để nút "Chi tiết"
+  createdAt: string;
+  amount: number;
+  sign: '+' | '−';
+  color: string;
+  tagLabel: string;
+  desc: string;
+};
 
 function formatMoney(v: number) {
   return Number(v).toLocaleString('vi-VN') + '₫';
@@ -39,6 +52,8 @@ export default function CustomerList() {
   // Topup history drawer
   const [historyCustomer, setHistoryCustomer] = useState<Customer | null>(null);
 
+  const { viewOrderDetail } = useUiStore();
+
   // Import Excel
   const [importOpen, setImportOpen] = useState(false);
   const [importFile, setImportFile] = useState<File | null>(null);
@@ -55,6 +70,54 @@ export default function CustomerList() {
     queryFn: () => customerApi.topups(historyCustomer!.id, { page: 1, size: 50 }).then((r) => r.data.data),
     enabled: !!historyCustomer,
   });
+
+  // Order history (chi tiêu)
+  const { data: orderHistory, isLoading: orderHistoryLoading } = useQuery({
+    queryKey: ['customer-orders', historyCustomer?.id],
+    queryFn: () => customerApi.orders(historyCustomer!.id, { page: 1, size: 50 }).then((r) => r.data.data),
+    enabled: !!historyCustomer,
+  });
+
+  // Merge topups + orders thành một timeline sorted theo thời gian giảm dần
+  const mergedHistory = useMemo(() => {
+    const topups: HistoryItem[] = (topupHistory?.items ?? []).map((t) => ({
+      id: t.id,
+      type: 'topup' as const,
+      createdAt: t.createdAt,
+      amount: Number(t.amount),
+      sign: '+' as const,
+      color: '#52c41a',
+      tagLabel: 'Nạp',
+      desc: [
+        t.receivedFrom && `Người gửi: ${t.receivedFrom}`,
+        t.note,
+        `Trước: ${formatMoney(Number(t.balanceBefore))} → Sau: ${formatMoney(Number(t.balanceAfter))}`,
+        t.createdByUser && `bởi ${t.createdByUser.fullName}`,
+      ].filter(Boolean).join(' · '),
+    }));
+
+    const orders: HistoryItem[] = (orderHistory?.items ?? []).map((o) => ({
+      id: o.id,
+      type: 'order' as const,
+      orderId: o.id,
+      createdAt: o.createdAt,
+      amount: Number(o.totalComputed),
+      sign: '−' as const,
+      color: o.status === 'CANCELLED' ? '#999' : '#ff4d4f',
+      tagLabel: o.status === 'CANCELLED' ? 'Đã hủy' : 'Chi',
+      desc: [
+        `Mã: ${o.code}`,
+        `${o.items.length} món`,
+        o.balanceBefore != null && o.balanceAfter != null
+          ? `Trước: ${formatMoney(Number(o.balanceBefore))} → Sau: ${formatMoney(Number(o.balanceAfter))}`
+          : null,
+        o.cashier && `thu ngân ${o.cashier.fullName}`,
+        o.note,
+      ].filter(Boolean).join(' · '),
+    }));
+
+    return [...topups, ...orders].sort((a, b) => dayjs(b.createdAt).valueOf() - dayjs(a.createdAt).valueOf());
+  }, [topupHistory, orderHistory]);
 
   const createCustomer = useMutation({
     mutationFn: customerApi.create,
@@ -93,6 +156,7 @@ export default function CustomerList() {
       setTopupCustomer(null);
       queryClient.invalidateQueries({ queryKey: ['customers'] });
       queryClient.invalidateQueries({ queryKey: ['customer-topups'] });
+      queryClient.invalidateQueries({ queryKey: ['customer-orders'] });
     },
     onError: (err: unknown) => {
             message.error(getApiErrorMessage(err, 'Nạp tiền thất bại'));
@@ -317,12 +381,12 @@ export default function CustomerList() {
         </Form>
       </Modal>
 
-      {/* Topup History Drawer */}
+      {/* History Drawer — Nạp tiền + Chi tiêu (gộp timeline) */}
       <Drawer
-        title={`Lịch sử nạp tiền — ${historyCustomer?.fullName ?? ''}`}
+        title={`Lịch sử giao dịch — ${historyCustomer?.fullName ?? ''}`}
         open={!!historyCustomer}
         onClose={() => setHistoryCustomer(null)}
-        width={560}
+        width={620}
       >
         {historyCustomer && (
           <>
@@ -332,32 +396,46 @@ export default function CustomerList() {
               </Descriptions.Item>
             </Descriptions>
             <List
-              loading={historyLoading}
-              dataSource={topupHistory?.items ?? []}
-              locale={{ emptyText: 'Chưa có lịch sử nạp' }}
-              renderItem={(t: TopupTransaction) => (
-                <List.Item>
+              loading={historyLoading || orderHistoryLoading}
+              dataSource={mergedHistory}
+              locale={{ emptyText: 'Chưa có giao dịch' }}
+              renderItem={(item) => (
+                <List.Item
+                  actions={item.type === 'order' && item.orderId ? [
+                    <Button
+                      type="link"
+                      size="small"
+                      icon={<EyeOutlined />}
+                      onClick={() => {
+                        setHistoryCustomer(null);
+                        viewOrderDetail(item.orderId!);
+                      }}
+                    >
+                      Chi tiết
+                    </Button>,
+                  ] : undefined}
+                >
                   <List.Item.Meta
                     title={
-                      <span>
-                        <Tag color="green">+{formatMoney(Number(t.amount))}</Tag>
-                        <Text type="secondary" style={{ fontSize: 12 }}>
-                          {dayjs(t.createdAt).format('DD/MM/YYYY HH:mm')}
-                        </Text>
-                      </span>
-                    }
-                    description={
-                      <span style={{ fontSize: 12 }}>
-                        {t.receivedFrom && <>Người gửi: {t.receivedFrom} · </>}
-                        {t.note && <>{t.note} · </>}
-                        Trước: {formatMoney(Number(t.balanceBefore))} → Sau: {formatMoney(Number(t.balanceAfter))}
-                        {t.createdByUser && ` · bởi ${t.createdByUser.fullName}`}
-                      </span>
-                    }
-                  />
-                </List.Item>
-              )}
-            />
+                  <span>
+                    <Tag color={item.color}>{item.tagLabel}</Tag>
+                    <Text strong style={{ color: item.color }}>
+                      {item.sign}{formatMoney(item.amount)}
+                    </Text>
+                    <Text type="secondary" style={{ fontSize: 12 }}>
+                      {' '}{dayjs(item.createdAt).format('DD/MM/YYYY HH:mm')}
+                    </Text>
+                  </span>
+                }
+                description={
+                  <span style={{ fontSize: 12 }}>
+                    {item.desc}
+                  </span>
+                }
+              />
+            </List.Item>
+          )}
+        />
           </>
         )}
       </Drawer>

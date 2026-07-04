@@ -1,11 +1,12 @@
 import { getApiErrorMessage } from '@/api/client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, Table, Tag, Space, DatePicker, Button, Drawer, Descriptions, Typography, Input, Select, Modal, message, Popconfirm } from 'antd';
 import type { ChangeEvent } from 'react';
 import { EyeOutlined, HistoryOutlined, SearchOutlined, StopOutlined, ReloadOutlined } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { orderApi } from '@/api/endpoints';
 import type { Order, OrderItem } from '@/api/endpoints';
+import { useUiStore } from '@/stores/uiStore';
 import dayjs from 'dayjs';
 
 const { RangePicker } = DatePicker;
@@ -17,6 +18,7 @@ function formatMoney(v: number) {
 
 export default function OrderHistoryPage() {
   const queryClient = useQueryClient();
+  const { pendingOrderId, setPendingOrderId } = useUiStore();
   const [page, setPage] = useState(1);
   const [dateRange, setDateRange] = useState<[dayjs.Dayjs | null, dayjs.Dayjs | null] | null>(null);
   const [drawerOrder, setDrawerOrder] = useState<Order | null>(null);
@@ -40,6 +42,36 @@ export default function OrderHistoryPage() {
         })
         .then((r) => r.data.data),
   });
+
+  // Xử lý pendingOrderId: khi được yêu cầu mở chi tiết đơn từ tab khác
+  const [pendingCode, setPendingCode] = useState<string | null>(null);
+  useEffect(() => {
+    if (!pendingOrderId) return;
+    setPage(1);
+    setDateRange(null);
+    setStatusFilter(undefined);
+    // Lấy mã đơn qua API getById để điền vào ô tìm kiếm + mở Drawer
+    orderApi.getById(pendingOrderId).then((r) => {
+      const order = r.data.data;
+      setPendingCode(order.code);
+      setSearch(order.code);
+      setDrawerOrder(order);
+      setPendingOrderId(null);
+    }).catch(() => {
+      setPendingOrderId(null);
+    });
+  }, [pendingOrderId, setPendingOrderId]);
+
+  // Khi data load xong và đang có pendingCode, tìm đúng đơn trong danh sách để mở Drawer
+  useEffect(() => {
+    if (pendingCode && data?.items) {
+      const found = data.items.find((o) => o.code === pendingCode);
+      if (found) {
+        setDrawerOrder(found);
+        setPendingCode(null);
+      }
+    }
+  }, [pendingCode, data]);
 
   const cancelMutation = useMutation({
     mutationFn: ({ id, reason }: { id: string; reason: string }) => orderApi.cancel(id, reason),
