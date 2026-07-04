@@ -1,6 +1,7 @@
 import { Prisma } from '@prisma/client';
 import { prisma } from '../prisma';
 import { InventoryTransactionType } from '@prisma/client';
+import { logger } from '../logger';
 
 const VALID_TRANSACTION_TYPES = Object.values(InventoryTransactionType);
 
@@ -28,72 +29,50 @@ export const inventoryService = {
     return { items, total, page: params.page, size: params.size };
   },
 
-  async stockIn(input: { productId: string; quantity: number; unitId?: string; unitCost?: number; referenceNo?: string; reason?: string; createdBy: string }) {
+  async stockIn(input: { productId: string; quantity: number; unitCost?: number; referenceNo?: string; reason?: string; createdBy: string }) {
     if (input.quantity <= 0) {
       throw new Error('Quantity must be positive');
     }
-    return prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx) => {
       const product = await tx.product.findUniqueOrThrow({
         where: { id: input.productId },
-        include: { unit: true, unitConversions: { include: { fromUnit: true, toUnit: true } } },
+        include: { unit: true, bundleUnit: true, parentProduct: { include: { unit: true } } },
       });
 
-      // Tính toán số lượng quy đổi và đơn vị ghi nhận
       let effectiveQty = input.quantity;
-      let unitLabel = product.unit?.name || '';
-      let conversionInfo: string | undefined;
+      let targetProductId = input.productId;
+      let stockBefore = Number(product.currentStock);
+      let reasonText = input.reason || 'Nhập kho';
 
-      if (input.unitId && input.unitId !== product.unitId) {
-        // Tìm conversion: fromUnitId = input.unitId, toUnitId = product.unitId
-        const conversion = product.unitConversions.find(
-          (c) => c.fromUnitId === input.unitId && c.toUnitId === product.unitId
-        );
-        if (!conversion) {
-          // Thử tìm chiều ngược lại
-          const reverse = product.unitConversions.find(
-            (c) => c.toUnitId === input.unitId && c.fromUnitId === product.unitId
-          );
-          if (reverse) {
-            // input.unitId là toUnit (đơn vị nhỏ), product.unitId là fromUnit (đơn vị lớn)
-            // VD: product.unitId = THUNG, input.unitId = CHAI, factor = 24
-            // → effectiveQty = input.quantity / factor
-            const factor = Number(reverse.factor);
-            if (factor === 0) throw new Error('Conversion factor cannot be zero');
-            effectiveQty = input.quantity / factor;
-            unitLabel = reverse.fromUnit.name;
-            conversionInfo = `${input.quantity} ${reverse.toUnit.name} = ${effectiveQty} ${reverse.fromUnit.name}`;
-          } else {
-            throw new Error(`No unit conversion found for product ${product.code} from unit ${input.unitId}`);
-          }
-        } else {
-          // input.unitId là fromUnit (đơn vị lớn), product.unitId là toUnit (đơn vị nhỏ)
-          // VD: input.unitId = THUNG, product.unitId = CHAI, factor = 24
-          // → effectiveQty = input.quantity * factor
-          effectiveQty = input.quantity * Number(conversion.factor);
-          unitLabel = conversion.toUnit.name;
-          conversionInfo = `${input.quantity} ${conversion.fromUnit.name} = ${effectiveQty} ${conversion.toUnit.name}`;
-        }
+      // Nếu là bundle product (có parentProductId) → quy đổi về sản phẩm cơ bản
+      if (product.parentProductId && product.factor) {
+        const parentProduct = product.parentProduct!;
+        effectiveQty = input.quantity * Number(product.factor);
+        targetProductId = parentProduct.id;
+        // Lấy tồn kho từ parent product
+        const parent = await tx.product.findUniqueOrThrow({ where: { id: parentProduct.id } });
+        stockBefore = Number(parent.currentStock);
+        const bundleUnitName = product.bundleUnit?.name || 'đơn vị';
+        const baseUnitName = parentProduct.unit?.name || product.unit?.name || '';
+        reasonText = `Nhập ${input.quantity} ${bundleUnitName} (${effectiveQty} ${baseUnitName})${input.reason ? ` | ${input.reason}` : ''}`;
       }
 
-      const newStock = Number(product.currentStock) + effectiveQty;
-      await tx.product.update({ where: { id: input.productId }, data: { currentStock: newStock } });
+      const newStock = stockBefore + effectiveQty;
+      await tx.product.update({ where: { id: targetProductId }, data: { currentStock: newStock } });
 
-      // Nếu có unitCost và có quy đổi, tính lại unitCost theo đơn vị cơ bản
-      let unitCostNote: string | undefined;
-      if (input.unitCost && conversionInfo) {
-        const costPerBaseUnit = input.unitCost / effectiveQty * input.quantity;
-        const fromUnitName = product.unitConversions.find(c => c.fromUnitId === input.unitId)?.fromUnit.name || '';
-        unitCostNote = ` (Giá nhập: ${input.unitCost.toLocaleString('vi-VN')}₫/${fromUnitName} → ${Math.round(costPerBaseUnit).toLocaleString('vi-VN')}₫/${unitLabel})`;
+      // Nếu có unitCost và là bundle, tính giá theo đơn vị cơ bản
+      if (input.unitCost && product.parentProductId && product.factor) {
+        const costPerBaseUnit = input.unitCost / Number(product.factor);
+        const baseUnitName = product.parentProduct?.unit?.name || product.unit?.name || '';
+        reasonText += ` | Giá nhập: ${input.unitCost.toLocaleString('vi-VN')}₫/${product.bundleUnit?.name || 'đơn vị'} → ${Math.round(costPerBaseUnit).toLocaleString('vi-VN')}₫/${baseUnitName}`;
       }
-
-      const reasonText = [input.reason || 'Nhập kho', conversionInfo, unitCostNote].filter(Boolean).join(' | ');
 
       return tx.inventoryTransaction.create({
         data: {
           type: InventoryTransactionType.IN,
-          productId: input.productId,
+          productId: targetProductId,
           quantity: effectiveQty,
-          stockBefore: product.currentStock,
+          stockBefore,
           stockAfter: newStock,
           referenceNo: input.referenceNo,
           reason: reasonText,
@@ -102,40 +81,71 @@ export const inventoryService = {
         include: { product: true },
       });
     });
+    logger.info(`Stock-IN: product=${input.productId} qty=${result.quantity} stockBefore=${result.stockBefore} stockAfter=${result.stockAfter} by=${input.createdBy}`);
+    return result;
   },
 
   async stockOut(input: { productId: string; quantity: number; referenceNo?: string; reason: string; createdBy: string }) {
     if (input.quantity <= 0) {
       throw new Error('Quantity must be positive');
     }
-    return prisma.$transaction(async (tx) => {
-      const product = await tx.product.findUniqueOrThrow({ where: { id: input.productId } });
-      if (Number(product.currentStock) < input.quantity) {
-        throw new Error(`Insufficient stock for ${product.name}`);
+    const result = await prisma.$transaction(async (tx) => {
+      const product = await tx.product.findUniqueOrThrow({
+        where: { id: input.productId },
+        include: { unit: true, bundleUnit: true, parentProduct: { include: { unit: true } } },
+      });
+
+      let effectiveQty = input.quantity;
+      let targetProductId = input.productId;
+      let stockBefore = Number(product.currentStock);
+      let reasonText = input.reason;
+
+      // Nếu là bundle product (có parentProductId) → quy đổi về sản phẩm cơ bản
+      if (product.parentProductId && product.factor) {
+        const parentProduct = product.parentProduct!;
+        effectiveQty = input.quantity * Number(product.factor);
+        targetProductId = parentProduct.id;
+        const parent = await tx.product.findUniqueOrThrow({ where: { id: parentProduct.id } });
+        stockBefore = Number(parent.currentStock);
+        if (stockBefore < effectiveQty) {
+          logger.warn(`Stock-OUT REJECTED: insufficient stock — product="${parentProduct.name}" stock=${parent.currentStock} need=${effectiveQty}`);
+          throw new Error(`Insufficient stock for ${parentProduct.name}: ${parent.currentStock} available, need ${effectiveQty}`);
+        }
+        const bundleUnitName = product.bundleUnit?.name || 'đơn vị';
+        const baseUnitName = parentProduct.unit?.name || product.unit?.name || '';
+        reasonText = `Xuất ${input.quantity} ${bundleUnitName} (${effectiveQty} ${baseUnitName}) | ${input.reason}`;
+      } else {
+        if (Number(product.currentStock) < effectiveQty) {
+          logger.warn(`Stock-OUT REJECTED: insufficient stock — product="${product.name}" stock=${product.currentStock} need=${effectiveQty}`);
+          throw new Error(`Insufficient stock for ${product.name}: ${product.currentStock} available`);
+        }
       }
-      const newStock = Number(product.currentStock) - input.quantity;
-      await tx.product.update({ where: { id: input.productId }, data: { currentStock: newStock } });
+
+      const newStock = stockBefore - effectiveQty;
+      await tx.product.update({ where: { id: targetProductId }, data: { currentStock: newStock } });
       return tx.inventoryTransaction.create({
         data: {
           type: InventoryTransactionType.OUT,
-          productId: input.productId,
-          quantity: -input.quantity,
-          stockBefore: product.currentStock,
+          productId: targetProductId,
+          quantity: -effectiveQty,
+          stockBefore,
           stockAfter: newStock,
           referenceNo: input.referenceNo,
-          reason: input.reason,
+          reason: reasonText,
           createdBy: input.createdBy,
         },
         include: { product: true },
       });
     });
+    logger.info(`Stock-OUT: product=${input.productId} qty=${result.quantity} stockBefore=${result.stockBefore} stockAfter=${result.stockAfter} by=${input.createdBy}`);
+    return result;
   },
 
   async adjust(input: { productId: string; newStock: number; reason: string; createdBy: string }) {
     if (input.newStock < 0) {
       throw new Error('Stock cannot be negative');
     }
-    return prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx) => {
       const product = await tx.product.findUniqueOrThrow({ where: { id: input.productId } });
       const delta = input.newStock - Number(product.currentStock);
       await tx.product.update({ where: { id: input.productId }, data: { currentStock: input.newStock } });
@@ -152,5 +162,7 @@ export const inventoryService = {
         include: { product: true },
       });
     });
+    logger.info(`Stock-ADJUST: product=${input.productId} newStock=${input.newStock} oldStock=${result.stockBefore} by=${input.createdBy} reason="${input.reason}"`);
+    return result;
   },
 };

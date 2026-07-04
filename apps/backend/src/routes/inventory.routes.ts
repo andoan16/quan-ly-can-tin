@@ -11,7 +11,6 @@ const VALID_TRANSACTION_TYPES = Object.values(InventoryTransactionType);
 const stockInSchema = z.object({
   productId: z.string().uuid(),
   quantity: z.coerce.number().positive(),
-  unitId: z.string().uuid().optional(),
   unitCost: z.coerce.number().nonnegative().optional(),
   referenceNo: z.string().optional(),
   reason: z.string().optional(),

@@ -1,0 +1,26 @@
+/*
+ * Pagination fixed bottom cho Ant Design Table.
+ * Pagination luôn dính ở cuối cửa sổ, user luôn thấy được.
+ */
+
+/* Pagination dính ở cuối cửa sổ */
+.ant-table-pagination.ant-table-pagination {
+  position: fixed;
+  bottom: 12px;
+  left: 212px;
+  right: 12px;
+  z-index: 10;
+  background: #fff;
+  margin: 0 !important;
+  padding: 4px 12px;
+  border-top: 1px solid #f0f0f0;
+  border-radius: 0 0 6px 6px;
+  display: flex !important;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+/* Table cần padding bottom để row cuối không bị pagination che */
+.ant-table-wrapper {
+  padding-bottom: 40px;
+}

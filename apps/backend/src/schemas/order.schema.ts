@@ -1,8 +1,8 @@
 import { z } from 'zod';
 
 export const createOrderSchema = z.object({
-  customerId: z.string().uuid().optional(),
-  paymentMethod: z.enum(['CASH', 'CARD', 'TRANSFER']),
+  customerId: z.string().uuid(), // bắt buộc — người mua phải có tài khoản
+  paymentMethod: z.enum(['CASH', 'TRANSFER']).optional(), // deprecated, luôn CASH
   note: z.string().optional(),
   items: z.array(
     z.object({

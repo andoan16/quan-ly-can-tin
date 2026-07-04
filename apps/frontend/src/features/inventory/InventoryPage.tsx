@@ -1,8 +1,11 @@
 import { useState } from 'react';
 import { Tabs, Card, Button, Input, Select, InputNumber, message, Table, Tag, Space, Alert } from 'antd';
+import { ReloadOutlined } from '@ant-design/icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { productApi, inventoryApi, unitApi } from '@/api/endpoints';
-import type { Product, UnitConversion } from '@/api/endpoints';
+import { productApi, inventoryApi } from '@/api/endpoints';
+import type { Product } from '@/api/endpoints';
+import { unaccentIncludes } from '@/utils/unaccent';
+import StockCountTab from './StockCountTab';
 
 export default function InventoryPage() {
   const [activeKey, setActiveKey] = useState('stock-in');
@@ -11,80 +14,42 @@ export default function InventoryPage() {
   // Stock-in state
   const [selectedProductId, setSelectedProductId] = useState<string | undefined>();
   const [qty, setQty] = useState<number>(1);
-  const [selectedUnitId, setSelectedUnitId] = useState<string | undefined>();
   const [reason, setReason] = useState('');
 
   // Products for stock-in dropdown
   const { data: allProducts } = useQuery({
     queryKey: ['products-all'],
+    // PERFORMANCE NOTE: fetches up to 200 products for the Select dropdown.
+    // Acceptable for canteen scale (~50-150 SKUs). If catalog grows past ~300,
+    // migrate to a debounced remote-search Select using productApi.list({ search, size }).
     queryFn: () => productApi.list({ size: 200 }).then((r) => r.data.data.items),
-  });
-
-  // All units for dropdown
-  const { data: allUnits } = useQuery({
-    queryKey: ['units-all'],
-    queryFn: () => unitApi.list().then((r) => r.data.data),
   });
 
   const selectedProduct = allProducts?.find((p: Product) => p.id === selectedProductId);
 
-  // Tính danh sách đơn vị có thể nhập:
-  // - Đơn vị cơ bản của product (unitId)
-  // - Các fromUnit trong unitConversions (đơn vị lớn hơn)
-  // - Các toUnit trong unitConversions (đơn vị nhỏ hơn)
-  const availableUnits = (() => {
-    if (!selectedProduct || !allUnits) return [];
-    const unitIds = new Set<string>();
-    if (selectedProduct.unitId) unitIds.add(selectedProduct.unitId);
-    (selectedProduct.unitConversions || []).forEach((c: UnitConversion) => {
-      unitIds.add(c.fromUnitId);
-      unitIds.add(c.toUnitId);
-    });
-    return allUnits.filter((u) => unitIds.has(u.id));
-  })();
-
-  // Tính số lượng quy đổi khi chọn đơn vị nhập
-  const conversionPreview = (() => {
-    if (!selectedProduct || !selectedUnitId || !qty) return null;
-    if (selectedUnitId === selectedProduct.unitId) {
-      return { effectiveQty: qty, unitName: selectedProduct.unit?.name || '', isBase: true };
-    }
-    const conversions = selectedProduct.unitConversions || [];
-    // Th1: selectedUnitId là fromUnit (đơn vị lớn), product.unitId là toUnit (đơn vị nhỏ)
-    const forward = conversions.find((c) => c.fromUnitId === selectedUnitId && c.toUnitId === selectedProduct.unitId);
-    if (forward) {
-      return {
-        effectiveQty: qty * forward.factor,
-        unitName: forward.toUnit.name,
-        fromUnitName: forward.fromUnit.name,
-        isBase: false,
-        formula: `${qty} ${forward.fromUnit.name} = ${qty * forward.factor} ${forward.toUnit.name}`,
-      };
-    }
-    // Th2: selectedUnitId là toUnit (đơn vị nhỏ), product.unitId là fromUnit (đơn vị lớn)
-    const reverse = conversions.find((c) => c.toUnitId === selectedUnitId && c.fromUnitId === selectedProduct.unitId);
-    if (reverse) {
-      const effective = qty / reverse.factor;
-      return {
-        effectiveQty: effective,
-        unitName: reverse.fromUnit.name,
-        fromUnitName: reverse.toUnit.name,
-        isBase: false,
-        formula: `${qty} ${reverse.toUnit.name} = ${effective} ${reverse.fromUnit.name}`,
-      };
-    }
-    return null;
+  // Tính preview quy đổi cho bundle product
+  const bundlePreview = (() => {
+    if (!selectedProduct || !selectedProduct.parentProductId || !selectedProduct.factor) return null;
+    const baseName = selectedProduct.parentProduct?.name || selectedProduct.name;
+    const bundleUnitName = selectedProduct.bundleUnit?.name || '';
+    const baseUnitName = selectedProduct.parentProduct?.unit?.name || selectedProduct.unit?.name || '';
+    const effectiveQty = qty * Number(selectedProduct.factor);
+    return {
+      formula: `${qty} ${bundleUnitName} = ${effectiveQty} ${baseUnitName}`,
+      effectiveQty,
+      baseName,
+      baseUnitName,
+    };
   })();
 
   const stockIn = useMutation({
     mutationFn: inventoryApi.stockIn,
     onSuccess: () => {
-      const unitLabel = conversionPreview?.isBase === false
-        ? ` (${conversionPreview.formula})`
-        : ` ${selectedProduct?.unit?.name || ''}`;
-      message.success(`Nhập kho thành công: ${qty}${unitLabel} ${selectedProduct?.name || ''}`);
+      const label = bundlePreview
+        ? ` (${bundlePreview.formula})`
+        : selectedProduct?.unit ? ` ${selectedProduct.unit.name}` : '';
+      message.success(`Nhập kho thành công: ${qty}${label} ${selectedProduct?.name || ''}`);
       setSelectedProductId(undefined);
-      setSelectedUnitId(undefined);
       setQty(1);
       setReason('');
       queryClient.invalidateQueries({ queryKey: ['products-all'] });
@@ -125,10 +90,10 @@ export default function InventoryPage() {
                 placeholder="Chọn sản phẩm..."
                 value={selectedProductId}
                 onChange={setSelectedProductId}
-                filterOption={(input, option) => (option?.label ?? '').toLowerCase().includes(input.toLowerCase())}
+                filterOption={(input, option) => unaccentIncludes(option?.label ?? '', input)}
                 options={allProducts?.map((p: Product) => ({
                   value: p.id,
-                  label: `${p.code} - ${p.name} (Tồn: ${p.currentStock})`,
+                  label: `${p.code} - ${p.name}${p.parentProductId && p.factor ? ` (${p.bundleUnit?.name || 'đóng gói'} ×${p.factor})` : ''} (Tồn: ${p.currentStock})`,
                 }))}
                 style={{ width: '100%' }}
                 size="small"
@@ -138,29 +103,25 @@ export default function InventoryPage() {
               <div style={{ padding: '8px 12px', background: '#f6f8fa', borderRadius: 6, fontSize: 13 }}>
                 <div><strong>{selectedProduct.code}</strong> — {selectedProduct.name}</div>
                 <div style={{ color: '#666' }}>
-                  Tồn hiện tại: <Tag color={Number(selectedProduct.currentStock) <= 10 ? 'red' : Number(selectedProduct.currentStock) <= 30 ? 'orange' : 'green'}>
-                    {selectedProduct.currentStock} {selectedProduct.unit?.name || ''}
-                  </Tag>
+                  {' '}Tồn hiện tại:{' '}
+                  {selectedProduct.parentProductId ? (
+                    <Tag color={Number(selectedProduct.parentProduct?.currentStock ?? 0) <= 10 ? 'red' : Number(selectedProduct.parentProduct?.currentStock ?? 0) <= 30 ? 'orange' : 'green'}>
+                      {Number(selectedProduct.parentProduct?.currentStock ?? 0)} {selectedProduct.parentProduct?.unit?.name || selectedProduct.unit?.name || ''}
+                    </Tag>
+                  ) : (
+                    <Tag color={Number(selectedProduct.currentStock) <= 10 ? 'red' : Number(selectedProduct.currentStock) <= 30 ? 'orange' : 'green'}>
+                      {selectedProduct.currentStock} {selectedProduct.unit?.name || ''}
+                    </Tag>
+                  )}
                   {' '}| Giá nhập: {Number(selectedProduct.costPrice).toLocaleString('vi-VN')}₫
                 </div>
-                {(selectedProduct.unitConversions || []).length > 0 && (
+                {selectedProduct.parentProductId && selectedProduct.factor && (
                   <div style={{ marginTop: 4, color: '#888', fontSize: 12 }}>
-                    Quy đổi: {selectedProduct.unitConversions!.map((c: UnitConversion) => `1 ${c.fromUnit.name} = ${c.factor} ${c.toUnit.name}`).join(', ')}
+                    Quy đổi: 1 {selectedProduct.bundleUnit?.name || 'đóng gói'} = {selectedProduct.factor} {selectedProduct.parentProduct?.name || 'đơn vị cơ bản'}
                   </div>
                 )}
               </div>
             )}
-            <div>
-              <div style={{ marginBottom: 4, fontWeight: 500 }}>Đơn vị nhập</div>
-              <Select
-                placeholder="Chọn đơn vị..."
-                value={selectedUnitId || selectedProduct?.unitId}
-                onChange={setSelectedUnitId}
-                options={availableUnits.map((u) => ({ value: u.id, label: u.name }))}
-                style={{ width: '100%' }}
-                size="small"
-              />
-            </div>
             <div>
               <div style={{ marginBottom: 4, fontWeight: 500 }}>Số lượng nhập</div>
               <InputNumber
@@ -171,12 +132,12 @@ export default function InventoryPage() {
                 size="small"
               />
             </div>
-            {conversionPreview && !conversionPreview.isBase && (
+            {bundlePreview && (
               <Alert
                 type="info"
                 showIcon
-                message={conversionPreview.formula}
-                description={`Tồn kho sẽ cộng ${conversionPreview.effectiveQty} ${conversionPreview.unitName}`}
+                message={bundlePreview.formula}
+                description={`Tồn kho cơ bản sẽ cộng ${bundlePreview.effectiveQty} ${bundlePreview.baseName}`}
                 style={{ fontSize: 13 }}
               />
             )}
@@ -197,7 +158,7 @@ export default function InventoryPage() {
               loading={stockIn.isPending}
               onClick={() => {
                 if (selectedProductId) {
-                  stockIn.mutate({ productId: selectedProductId, quantity: qty, unitId: selectedUnitId || selectedProduct?.unitId, reason });
+                  stockIn.mutate({ productId: selectedProductId, quantity: qty, reason });
                 }
               }}
               style={{ width: '100%' }}
@@ -212,7 +173,7 @@ export default function InventoryPage() {
       key: 'alerts',
       label: 'Cảnh báo hết hàng',
       children: (
-        <Card title="Sản phẩm sắp hết" size="small" styles={{ body: { padding: 8 } }}>
+        <Card title={<span>Sản phẩm sắp hết <Button size="small" type="text" icon={<ReloadOutlined />} onClick={() => queryClient.invalidateQueries({ queryKey: ['low-stock'] })} /></span>} size="small" styles={{ body: { padding: 8 } }}>
           <Table
             size="small"
             rowKey="id"
@@ -234,7 +195,7 @@ export default function InventoryPage() {
       key: 'history',
       label: 'Lịch sử giao dịch',
       children: (
-        <Card title="Lịch sử giao dịch kho" size="small" styles={{ body: { padding: 8 } }}>
+        <Card title={<span>Lịch sử giao dịch kho <Button size="small" type="text" icon={<ReloadOutlined />} onClick={() => queryClient.invalidateQueries({ queryKey: ['inventory-transactions'] })} /></span>} size="small" styles={{ body: { padding: 8 } }}>
           <Table
             size="small"
             rowKey="id"
@@ -264,6 +225,13 @@ export default function InventoryPage() {
       ),
     },
   ];
+
+  // Thêm tab kiểm kê
+  tabItems.push({
+    key: 'stock-count',
+    label: 'Kiểm kê',
+    children: <StockCountTab />,
+  });
 
   return (
     <Tabs

@@ -1,1 +1,46 @@
-node_modules/\ndist/\ndist-electron/\n*.js.map\n*.d.ts\n*.d.ts.map\n.env\nseed-expected-report.json
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+dist-electron/
+out/
+build/
+
+# Source maps & type declarations (generated)
+*.js.map
+*.d.ts
+*.d.ts.map
+
+# Compiled JS emitted next to TS sources (e.g. shared/src)
+shared/src/**/*.js
+shared/src/**/*.js.map
+shared/src/**/*.d.ts
+shared/src/**/*.d.ts.map
+shared/dist/
+
+# Logs
+logs/
+*.log
+
+# Environment files (contains secrets)
+.env
+.env.local
+.env.*.local
+
+# Test artifacts
+seed-expected-report.json
+coverage/
+
+# IDE / editor
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Hermes / agent local state
+.hermes/

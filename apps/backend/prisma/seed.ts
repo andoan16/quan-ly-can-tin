@@ -52,14 +52,14 @@ async function main() {
 
   // --- Categories ---
   const categories = [
-    { code: 'NUOC', name: 'Nước uống', note: 'Các loại nước uống' },
-    { code: 'MON_CHIN', name: 'Món chính', note: 'Cơm, bún, phở...' },
-    { code: 'MON_NHO', name: 'Món nhúng/Nhỏ', note: 'Gỏi, nem, chả...' },
-    { code: 'TRANG_MIENG', name: 'Tráng miệng', note: 'Chè, trái cây...' },
-    { code: 'BANH_MI', name: 'Bánh mì', note: 'Bánh mì các loại' },
+    { code: 'NUOC', name: 'Nước uống', prefix: 'NUOC', note: 'Các loại nước uống' },
+    { code: 'MON_CHIN', name: 'Món chính', prefix: 'MC', note: 'Cơm, bún, phở...' },
+    { code: 'MON_NHO', name: 'Món nhúng/Nhỏ', prefix: 'MN', note: 'Gỏi, nem, chả...' },
+    { code: 'TRANG_MIENG', name: 'Tráng miệng', prefix: 'TM', note: 'Chè, trái cây...' },
+    { code: 'BANH_MI', name: 'Bánh mì', prefix: 'BM', note: 'Bánh mì các loại' },
   ];
   for (const c of categories) {
-    await prisma.category.upsert({ where: { code: c.code }, update: {}, create: c });
+    await prisma.category.upsert({ where: { code: c.code }, update: { prefix: c.prefix }, create: c });
   }
 
   // --- Customer Groups ---
@@ -80,34 +80,34 @@ async function main() {
   const catMap = Object.fromEntries(allCategories.map(c => [c.code, c.id]));
 
   const products = [
-    { code: 'NC001', name: 'Nước suối', categoryId: catMap['NUOC'], unitId: unitMap['CHAI'], sellingPrice: 5000, costPrice: 3000, currentStock: 120 },
-    { code: 'NC002', name: 'Nước cam', categoryId: catMap['NUOC'], unitId: unitMap['LY'], sellingPrice: 10000, costPrice: 6000, currentStock: 80 },
-    { code: 'NC003', name: 'Trà đá', categoryId: catMap['NUOC'], unitId: unitMap['LY'], sellingPrice: 3000, costPrice: 1000, currentStock: 200 },
-    { code: 'NC004', name: 'Trà sữa', categoryId: catMap['NUOC'], unitId: unitMap['LY2'], sellingPrice: 20000, costPrice: 12000, currentStock: 45 },
-    { code: 'NC005', name: 'Sinh tố bơ', categoryId: catMap['NUOC'], unitId: unitMap['LY2'], sellingPrice: 18000, costPrice: 10000, currentStock: 30 },
-    { code: 'NC006', name: 'Cà phê sữa', categoryId: catMap['NUOC'], unitId: unitMap['LY'], sellingPrice: 12000, costPrice: 7000, currentStock: 60 },
-    { code: 'NC007', name: 'Sữa tươi', categoryId: catMap['NUOC'], unitId: unitMap['CHAI'], sellingPrice: 8000, costPrice: 5000, currentStock: 50 },
-    { code: 'NC008', name: 'Nước dừa', categoryId: catMap['NUOC'], unitId: unitMap['LY'], sellingPrice: 15000, costPrice: 8000, currentStock: 25 },
-    { code: 'MC001', name: 'Cơm sườn', categoryId: catMap['MON_CHIN'], unitId: unitMap['PHAN'], sellingPrice: 35000, costPrice: 22000, currentStock: 40 },
-    { code: 'MC002', name: 'Cơm gà', categoryId: catMap['MON_CHIN'], unitId: unitMap['PHAN'], sellingPrice: 30000, costPrice: 18000, currentStock: 35 },
-    { code: 'MC003', name: 'Bún bò Huế', categoryId: catMap['MON_CHIN'], unitId: unitMap['TO'], sellingPrice: 30000, costPrice: 18000, currentStock: 28 },
-    { code: 'MC004', name: 'Phở bò', categoryId: catMap['MON_CHIN'], unitId: unitMap['TO'], sellingPrice: 28000, costPrice: 16000, currentStock: 30 },
-    { code: 'MC005', name: 'Cơm chiên dương châu', categoryId: catMap['MON_CHIN'], unitId: unitMap['PHAN'], sellingPrice: 32000, costPrice: 20000, currentStock: 22 },
-    { code: 'MC006', name: 'Mì xào bò', categoryId: catMap['MON_CHIN'], unitId: unitMap['PHAN'], sellingPrice: 28000, costPrice: 16000, currentStock: 18 },
-    { code: 'MC007', name: 'Cơm sườn bì chả', categoryId: catMap['MON_CHIN'], unitId: unitMap['PHAN'], sellingPrice: 35000, costPrice: 22000, currentStock: 5 },
-    { code: 'MN001', name: 'Gỏi cuốn', categoryId: catMap['MON_NHO'], unitId: unitMap['GOI'], sellingPrice: 10000, costPrice: 5000, currentStock: 50 },
-    { code: 'MN002', name: 'Nem rán', categoryId: catMap['MON_NHO'], unitId: unitMap['GOI'], sellingPrice: 8000, costPrice: 4000, currentStock: 45 },
-    { code: 'MN003', name: 'Chả giò', categoryId: catMap['MON_NHO'], unitId: unitMap['GOI'], sellingPrice: 12000, costPrice: 7000, currentStock: 30 },
-    { code: 'MN004', name: 'Gà chiên mắm', categoryId: catMap['MON_NHO'], unitId: unitMap['PHAN'], sellingPrice: 20000, costPrice: 12000, currentStock: 15 },
-    { code: 'MN005', name: 'Tôm chiên xù', categoryId: catMap['MON_NHO'], unitId: unitMap['PHAN'], sellingPrice: 22000, costPrice: 14000, currentStock: 8 },
-    { code: 'TM001', name: 'Chè khúc bạch', categoryId: catMap['TRANG_MIENG'], unitId: unitMap['LY'], sellingPrice: 15000, costPrice: 8000, currentStock: 40 },
-    { code: 'TM002', name: 'Chè bưởi', categoryId: catMap['TRANG_MIENG'], unitId: unitMap['LY'], sellingPrice: 12000, costPrice: 6000, currentStock: 35 },
-    { code: 'TM003', name: 'Trái cây thái', categoryId: catMap['TRANG_MIENG'], unitId: unitMap['DIA'], sellingPrice: 10000, costPrice: 5000, currentStock: 20 },
-    { code: 'TM004', name: 'Sữa chua', categoryId: catMap['TRANG_MIENG'], unitId: unitMap['LY'], sellingPrice: 8000, costPrice: 4000, currentStock: 55 },
-    { code: 'BM001', name: 'Bánh mì thịt', categoryId: catMap['BANH_MI'], unitId: unitMap['GOI'], sellingPrice: 15000, costPrice: 8000, currentStock: 60 },
-    { code: 'BM002', name: 'Bánh mì trứng', categoryId: catMap['BANH_MI'], unitId: unitMap['GOI'], sellingPrice: 12000, costPrice: 6000, currentStock: 50 },
-    { code: 'BM003', name: 'Bánh mì phô mai', categoryId: catMap['BANH_MI'], unitId: unitMap['GOI'], sellingPrice: 18000, costPrice: 10000, currentStock: 35 },
-    { code: 'BM004', name: 'Bánh mì gà', categoryId: catMap['BANH_MI'], unitId: unitMap['GOI'], sellingPrice: 16000, costPrice: 9000, currentStock: 3 },
+    { code: 'NUOC000001', name: 'Nước suối', categoryId: catMap['NUOC'], unitId: unitMap['CHAI'], sellingPrice: 5000, costPrice: 3000, currentStock: 120 },
+    { code: 'NUOC000002', name: 'Nước cam', categoryId: catMap['NUOC'], unitId: unitMap['LY'], sellingPrice: 10000, costPrice: 6000, currentStock: 80 },
+    { code: 'NUOC000003', name: 'Trà đá', categoryId: catMap['NUOC'], unitId: unitMap['LY'], sellingPrice: 3000, costPrice: 1000, currentStock: 200 },
+    { code: 'NUOC000004', name: 'Trà sữa', categoryId: catMap['NUOC'], unitId: unitMap['LY2'], sellingPrice: 20000, costPrice: 12000, currentStock: 45 },
+    { code: 'NUOC000005', name: 'Sinh tố bơ', categoryId: catMap['NUOC'], unitId: unitMap['LY2'], sellingPrice: 18000, costPrice: 10000, currentStock: 30 },
+    { code: 'NUOC000006', name: 'Cà phê sữa', categoryId: catMap['NUOC'], unitId: unitMap['LY'], sellingPrice: 12000, costPrice: 7000, currentStock: 60 },
+    { code: 'NUOC000007', name: 'Sữa tươi', categoryId: catMap['NUOC'], unitId: unitMap['CHAI'], sellingPrice: 8000, costPrice: 5000, currentStock: 50 },
+    { code: 'NUOC000008', name: 'Nước dừa', categoryId: catMap['NUOC'], unitId: unitMap['LY'], sellingPrice: 15000, costPrice: 8000, currentStock: 25 },
+    { code: 'MC000001', name: 'Cơm sườn', categoryId: catMap['MON_CHIN'], unitId: unitMap['PHAN'], sellingPrice: 35000, costPrice: 22000, currentStock: 40 },
+    { code: 'MC000002', name: 'Cơm gà', categoryId: catMap['MON_CHIN'], unitId: unitMap['PHAN'], sellingPrice: 30000, costPrice: 18000, currentStock: 35 },
+    { code: 'MC000003', name: 'Bún bò Huế', categoryId: catMap['MON_CHIN'], unitId: unitMap['TO'], sellingPrice: 30000, costPrice: 18000, currentStock: 28 },
+    { code: 'MC000004', name: 'Phở bò', categoryId: catMap['MON_CHIN'], unitId: unitMap['TO'], sellingPrice: 28000, costPrice: 16000, currentStock: 30 },
+    { code: 'MC000005', name: 'Cơm chiên dương châu', categoryId: catMap['MON_CHIN'], unitId: unitMap['PHAN'], sellingPrice: 32000, costPrice: 20000, currentStock: 22 },
+    { code: 'MC000006', name: 'Mì xào bò', categoryId: catMap['MON_CHIN'], unitId: unitMap['PHAN'], sellingPrice: 28000, costPrice: 16000, currentStock: 18 },
+    { code: 'MC000007', name: 'Cơm sườn bì chả', categoryId: catMap['MON_CHIN'], unitId: unitMap['PHAN'], sellingPrice: 35000, costPrice: 22000, currentStock: 5 },
+    { code: 'MN000001', name: 'Gỏi cuốn', categoryId: catMap['MON_NHO'], unitId: unitMap['GOI'], sellingPrice: 10000, costPrice: 5000, currentStock: 50 },
+    { code: 'MN000002', name: 'Nem rán', categoryId: catMap['MON_NHO'], unitId: unitMap['GOI'], sellingPrice: 8000, costPrice: 4000, currentStock: 45 },
+    { code: 'MN000003', name: 'Chả giò', categoryId: catMap['MON_NHO'], unitId: unitMap['GOI'], sellingPrice: 12000, costPrice: 7000, currentStock: 30 },
+    { code: 'MN000004', name: 'Gà chiên mắm', categoryId: catMap['MON_NHO'], unitId: unitMap['PHAN'], sellingPrice: 20000, costPrice: 12000, currentStock: 15 },
+    { code: 'MN000005', name: 'Tôm chiên xù', categoryId: catMap['MON_NHO'], unitId: unitMap['PHAN'], sellingPrice: 22000, costPrice: 14000, currentStock: 8 },
+    { code: 'TM000001', name: 'Chè khúc bạch', categoryId: catMap['TRANG_MIENG'], unitId: unitMap['LY'], sellingPrice: 15000, costPrice: 8000, currentStock: 40 },
+    { code: 'TM000002', name: 'Chè bưởi', categoryId: catMap['TRANG_MIENG'], unitId: unitMap['LY'], sellingPrice: 12000, costPrice: 6000, currentStock: 35 },
+    { code: 'TM000003', name: 'Trái cây thái', categoryId: catMap['TRANG_MIENG'], unitId: unitMap['DIA'], sellingPrice: 10000, costPrice: 5000, currentStock: 20 },
+    { code: 'TM000004', name: 'Sữa chua', categoryId: catMap['TRANG_MIENG'], unitId: unitMap['LY'], sellingPrice: 8000, costPrice: 4000, currentStock: 55 },
+    { code: 'BM000001', name: 'Bánh mì thịt', categoryId: catMap['BANH_MI'], unitId: unitMap['GOI'], sellingPrice: 15000, costPrice: 8000, currentStock: 60 },
+    { code: 'BM000002', name: 'Bánh mì trứng', categoryId: catMap['BANH_MI'], unitId: unitMap['GOI'], sellingPrice: 12000, costPrice: 6000, currentStock: 50 },
+    { code: 'BM000003', name: 'Bánh mì phô mai', categoryId: catMap['BANH_MI'], unitId: unitMap['GOI'], sellingPrice: 18000, costPrice: 10000, currentStock: 35 },
+    { code: 'BM000004', name: 'Bánh mì gà', categoryId: catMap['BANH_MI'], unitId: unitMap['GOI'], sellingPrice: 16000, costPrice: 9000, currentStock: 3 },
   ];
   for (const p of products) {
     await prisma.product.upsert({
@@ -162,6 +162,10 @@ async function main() {
   }
 
   // --- Sample Orders ---
+  // Clear old orders to avoid unique constraint on code
+  await prisma.orderItem.deleteMany();
+  await prisma.order.deleteMany();
+
   const allProducts = await prisma.product.findMany({ take: 5 });
   const allCustomers = await prisma.customer.findMany({ take: 3 });
 
@@ -181,18 +185,19 @@ async function main() {
         items: {
           create: [{
             productId: product.id,
+            // OrderItem.quantity stores effectiveQty (base unit). Sample products are all
+            // base products (no parentProductId), so effectiveQty === qty — but keep the
+            // semantic contract consistent with order.service.ts which stores effectiveQty.
             quantity: qty,
             unitPrice: product.sellingPrice,
-            costPriceAtSale: product.costPrice,
+            costPriceAtSale: product.costPrice, // per-base-unit cost (sample products are base)
           }],
         },
       },
     });
   }
 
-  // --- Unit Conversions ---
-  // 1 Thùng = 24 Chai (áp dụng cho Nước suối NC001, Sữa tươi NC007)
-  // 1 Lốc = 6 Gói (áp dụng cho các sản phẩm Gói: BM001-BM004, MN001-MN003)
+  // --- Bundle Products (sản phẩm đóng gói: Thùng, Lốc) ---
   const thungUnit = await prisma.unit.findUniqueOrThrow({ where: { code: 'THUNG' } });
   const locUnit = await prisma.unit.findUniqueOrThrow({ where: { code: 'LOC' } });
   const chaiUnit = await prisma.unit.findUniqueOrThrow({ where: { code: 'CHAI' } });
@@ -201,36 +206,36 @@ async function main() {
   const allProductIds = Object.fromEntries(
     (await prisma.product.findMany()).map(p => [p.code, p.id])
   );
-  const productByCode = (code: string) => allProductIds[code];
 
-  const conversions = [
-    // Nước suối: 1 Thùng = 24 Chai
-    { productCode: 'NC001', fromUnitId: thungUnit.id, toUnitId: chaiUnit.id, factor: 24 },
+  const bundleProducts = [
+    // Nước suối: 1 Thùng = 24 Chai, giá sỉ
+    { code: 'NUOC000001-TH', name: 'Nước suối Thùng 24 chai', categoryId: catMap['NUOC'], unitId: allProductIds['NUOC000001'] ? (await prisma.product.findUniqueOrThrow({ where: { code: 'NUOC000001' } })).unitId : chaiUnit.id, sellingPrice: 96000, costPrice: 72000, currentStock: 0, parentProductId: allProductIds['NUOC000001'], factor: 24, bundleUnitId: thungUnit.id, isActive: true },
     // Sữa tươi: 1 Thùng = 24 Chai
-    { productCode: 'NC007', fromUnitId: thungUnit.id, toUnitId: chaiUnit.id, factor: 24 },
+    { code: 'NUOC000007-TH', name: 'Sữa tươi Thùng 24 chai', categoryId: catMap['NUOC'], unitId: allProductIds['NUOC000007'] ? (await prisma.product.findUniqueOrThrow({ where: { code: 'NUOC000007' } })).unitId : chaiUnit.id, sellingPrice: 168000, costPrice: 96000, currentStock: 0, parentProductId: allProductIds['NUOC000007'], factor: 24, bundleUnitId: thungUnit.id, isActive: true },
     // Bánh mì thịt: 1 Lốc = 6 Gói
-    { productCode: 'BM001', fromUnitId: locUnit.id, toUnitId: goiUnit.id, factor: 6 },
+    { code: 'BM000001-L', name: 'Bánh mì thịt Lốc 6 cái', categoryId: catMap['BANH_MI'], unitId: allProductIds['BM000001'] ? (await prisma.product.findUniqueOrThrow({ where: { code: 'BM000001' } })).unitId : goiUnit.id, sellingPrice: 90000, costPrice: 48000, currentStock: 0, parentProductId: allProductIds['BM000001'], factor: 6, bundleUnitId: locUnit.id, isActive: true },
     // Nem rán: 1 Lốc = 10 Gói
-    { productCode: 'MN002', fromUnitId: locUnit.id, toUnitId: goiUnit.id, factor: 10 },
+    { code: 'MN000002-L', name: 'Nem rán Lốc 10 cái', categoryId: catMap['MON_NHO'], unitId: allProductIds['MN000002'] ? (await prisma.product.findUniqueOrThrow({ where: { code: 'MN000002' } })).unitId : goiUnit.id, sellingPrice: 80000, costPrice: 40000, currentStock: 0, parentProductId: allProductIds['MN000002'], factor: 10, bundleUnitId: locUnit.id, isActive: true },
   ];
 
-  for (const c of conversions) {
-    const productId = productByCode(c.productCode);
-    if (!productId) continue;
-    await prisma.unitConversion.upsert({
-      where: {
-        productId_fromUnitId_toUnitId: {
-          productId,
-          fromUnitId: c.fromUnitId,
-          toUnitId: c.toUnitId,
-        },
-      },
-      update: { factor: c.factor },
+  for (const bp of bundleProducts) {
+    const { code, name, categoryId, sellingPrice, costPrice, currentStock, parentProductId, factor, bundleUnitId, isActive } = bp;
+    const parentProduct = parentProductId ? await prisma.product.findUniqueOrThrow({ where: { id: parentProductId } }) : null;
+    await prisma.product.upsert({
+      where: { code },
+      update: {},
       create: {
-        productId,
-        fromUnitId: c.fromUnitId,
-        toUnitId: c.toUnitId,
-        factor: c.factor,
+        code,
+        name,
+        categoryId,
+        unitId: parentProduct?.unitId || chaiUnit.id,
+        sellingPrice,
+        costPrice,
+        currentStock,
+        parentProductId,
+        factor,
+        bundleUnitId,
+        isActive,
       },
     });
   }
