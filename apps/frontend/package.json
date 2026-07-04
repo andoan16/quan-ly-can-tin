@@ -9,7 +9,35 @@
     "build:renderer": "vite build",
     "build:electron": "electron-vite build",
     "preview": "electron-vite preview",
-    "electron:pack": "electron-builder"
+    "electron:pack": "electron-builder",
+    "electron:pack:mac": "electron-builder --mac --arm64 --x64",
+    "electron:pack:win": "electron-builder --win"
+  },
+  "build": {
+    "appId": "com.nousresearch.quanlycantin",
+    "productName": "QuanLyCanTin",
+    "directories": {
+      "output": "release",
+      "buildResources": "build-resources"
+    },
+    "files": [
+      "dist-electron/**/*",
+      "dist/renderer/**/*"
+    ],
+    "mac": {
+      "target": [
+        { "target": "zip", "arch": ["arm64", "x64"] }
+      ],
+      "category": "public.app-category.business"
+    },
+    "win": {
+      "target": [
+        { "target": "portable", "arch": ["x64"] }
+      ]
+    },
+    "portable": {
+      "artifactName": "QuanLyCanTin-0.1.0-windows-portable.exe"
+    }
   },
   "dependencies": {
     "@ant-design/icons": "^5.3.7",
@@ -29,8 +57,8 @@
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.3.1",
-    "electron": "^31.0.2",
-    "electron-builder": "^24.13.3",
+    "electron": "31.0.2",
+    "electron-builder": "24.13.3",
     "electron-vite": "^2.3.0",
     "typescript": "^5.4.5",
     "vite": "^5.3.1"

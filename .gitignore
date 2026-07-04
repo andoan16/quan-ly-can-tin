@@ -4,7 +4,8 @@ node_modules/
 # Build output
 dist/
 dist-electron/
-out/
+shared/dist/
+apps/frontend/release/
 build/
 
 # Source maps & type declarations (generated)
