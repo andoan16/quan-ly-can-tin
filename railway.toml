@@ -1,8 +1,8 @@
 [build]
 builder = "railpack"
-buildCommand = "npm install && npm run build"
+buildCommand = "npm install && npx prisma generate && npx tsc -p tsconfig.build.json"
 
 [deploy]
-startCommand = "npm run start"
+startCommand = "node dist/index.js"
 healthcheckPath = "/api/v1/health"
 healthcheckTimeout = 30
