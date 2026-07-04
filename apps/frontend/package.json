@@ -11,7 +11,7 @@
     "preview": "electron-vite preview",
     "electron:pack": "electron-builder",
     "electron:pack:mac": "electron-builder --mac --arm64 --x64",
-    "electron:pack:win": "electron-builder --win"
+    "electron:pack:win": "electron-builder --win --x64 --arm64"
   },
   "build": {
     "appId": "com.nousresearch.quanlycantin",
@@ -32,11 +32,11 @@
     },
     "win": {
       "target": [
-        { "target": "portable", "arch": ["x64"] }
+        { "target": "portable", "arch": ["x64", "arm64"] }
       ]
     },
     "portable": {
-      "artifactName": "QuanLyCanTin-0.1.0-windows-portable.exe"
+      "artifactName": "QuanLyCanTin-0.1.0-windows-${arch}-portable.exe"
     }
   },
   "dependencies": {
