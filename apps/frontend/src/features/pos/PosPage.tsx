@@ -1,3 +1,4 @@
+import { getApiErrorMessage } from '@/api/client';
 import { useState, useEffect, useRef } from 'react';
 import { Row, Col, Card, Input, Button, List, Typography, Tag, Modal, message, Empty, Alert, Statistic, Spin, InputNumber } from 'antd';
 import { PrinterOutlined } from '@ant-design/icons';
@@ -68,8 +69,7 @@ export default function PosPage() {
       queryClient.invalidateQueries({ queryKey: ['customers-pos'] });
     },
     onError: (err: unknown) => {
-      const axiosErr = err as { response?: { data?: { message?: string } } };
-      const msg = axiosErr?.response?.data?.message || (err instanceof Error ? err.message : 'Thanh toán thất bại');
+            const msg = getApiErrorMessage(err, 'Thanh toán thất bại');
       message.error(msg);
     },
   });

@@ -29,6 +29,10 @@ export function requestLogger(req: express.Request, res: express.Response, next:
 export function createApp() {
   const app = express();
 
+  // Railway proxy gửi X-Forwarded-For — cần trust proxy để express-rate-limit
+  // xác định IP đúng và không throw ValidationError
+  app.set('trust proxy', 1);
+
   app.use(requestLogger);
   app.use(cors({ origin: config.allowedOrigins, credentials: true }));
 

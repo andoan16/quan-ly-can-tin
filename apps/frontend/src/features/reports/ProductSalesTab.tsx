@@ -1,3 +1,4 @@
+import { getApiErrorMessage } from '@/api/client';
 import { useState } from 'react';
 import { Card, Row, Col, DatePicker, Select, Table, Statistic, Tag, Space, Typography, Button, Modal, Input, message, Popconfirm, Drawer, List } from 'antd';
 import { ArrowUpOutlined, ArrowDownOutlined, DollarOutlined, ShoppingCartOutlined, BarChartOutlined, ShopOutlined, SaveOutlined, HistoryOutlined, DeleteOutlined, EyeOutlined, ReloadOutlined } from '@ant-design/icons';
@@ -76,8 +77,7 @@ export default function ProductSalesTab() {
       queryClient.invalidateQueries({ queryKey: ['saved-reports'] });
     },
     onError: (err: unknown) => {
-      const axiosErr = err as { response?: { data?: { message?: string } } };
-      message.error(axiosErr?.response?.data?.message || 'Lưu báo cáo thất bại');
+            message.error(getApiErrorMessage(err, 'Lưu báo cáo thất bại'));
     },
   });
 
@@ -89,8 +89,7 @@ export default function ProductSalesTab() {
       if (viewingReport?.id === deletedId) setViewingReport(null);
     },
     onError: (err: unknown) => {
-      const axiosErr = err as { response?: { data?: { message?: string } } };
-      message.error(axiosErr?.response?.data?.message || 'Xóa thất bại');
+            message.error(getApiErrorMessage(err, 'Xóa thất bại'));
     },
   });
 

@@ -1,3 +1,4 @@
+import { getApiErrorMessage } from '@/api/client';
 import { useState } from 'react';
 import { Card, Table, Tag, Space, DatePicker, Button, Drawer, Descriptions, Typography, Input, Select, Modal, message, Popconfirm } from 'antd';
 import type { ChangeEvent } from 'react';
@@ -50,8 +51,7 @@ export default function OrderHistoryPage() {
       queryClient.invalidateQueries({ queryKey: ['orders-today'] });
     },
     onError: (err: unknown) => {
-      const axiosErr = err as { response?: { data?: { message?: string } } };
-      message.error(axiosErr?.response?.data?.message || 'Hủy đơn thất bại');
+            message.error(getApiErrorMessage(err, 'Hủy đơn thất bại'));
     },
   });
 

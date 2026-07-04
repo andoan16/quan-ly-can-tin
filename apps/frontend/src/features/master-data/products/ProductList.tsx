@@ -1,3 +1,4 @@
+import { getApiErrorMessage } from '@/api/client';
 import { useState, useEffect } from 'react';
 import { Table, Button, Input, Space, Tag, Modal, Form, Select, InputNumber, Switch, message, Alert, Divider, Upload, List, Typography } from 'antd';
 import { PlusOutlined, UploadOutlined, DownloadOutlined, ReloadOutlined } from '@ant-design/icons';
@@ -79,8 +80,7 @@ export default function ProductList() {
       queryClient.invalidateQueries({ queryKey: ['products'] });
     },
     onError: (err: unknown) => {
-      const axiosErr = err as { response?: { data?: { message?: string } } };
-      message.error(axiosErr?.response?.data?.message || 'Thêm thất bại');
+            message.error(getApiErrorMessage(err, 'Thêm thất bại'));
     },
   });
 
@@ -95,8 +95,7 @@ export default function ProductList() {
       queryClient.invalidateQueries({ queryKey: ['products'] });
     },
     onError: (err: unknown) => {
-      const axiosErr = err as { response?: { data?: { message?: string } } };
-      message.error(axiosErr?.response?.data?.message || 'Cập nhật thất bại');
+            message.error(getApiErrorMessage(err, 'Cập nhật thất bại'));
     },
   });
 
@@ -118,8 +117,7 @@ export default function ProductList() {
       queryClient.invalidateQueries({ queryKey: ['products'] });
     },
     onError: (err: unknown) => {
-      const axiosErr = err as { response?: { data?: { message?: string } } };
-      message.error(axiosErr?.response?.data?.message || 'Import thất bại');
+            message.error(getApiErrorMessage(err, 'Import thất bại'));
     },
   });
 

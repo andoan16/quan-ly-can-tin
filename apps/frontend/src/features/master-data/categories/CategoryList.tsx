@@ -1,3 +1,4 @@
+import { getApiErrorMessage } from '@/api/client';
 import { useState } from 'react';
 import { Table, Button, Input, Space, Tag, Modal, Form, Switch, message, Popconfirm } from 'antd';
 import { PlusOutlined, ReloadOutlined, DeleteOutlined } from '@ant-design/icons';
@@ -33,8 +34,7 @@ export default function CategoryList() {
       queryClient.invalidateQueries({ queryKey: ['categories'] });
     },
     onError: (err: unknown) => {
-      const axiosErr = err as { response?: { data?: { message?: string } } };
-      message.error(axiosErr?.response?.data?.message || 'Thêm thất bại');
+            message.error(getApiErrorMessage(err, 'Thêm thất bại'));
     },
   });
 
@@ -50,8 +50,7 @@ export default function CategoryList() {
       queryClient.invalidateQueries({ queryKey: ['categories'] });
     },
     onError: (err: unknown) => {
-      const axiosErr = err as { response?: { data?: { message?: string } } };
-      message.error(axiosErr?.response?.data?.message || 'Cập nhật thất bại');
+            message.error(getApiErrorMessage(err, 'Cập nhật thất bại'));
     },
   });
 

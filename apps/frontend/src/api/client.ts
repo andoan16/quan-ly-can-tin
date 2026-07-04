@@ -1,4 +1,5 @@
 import axios, { type AxiosError, type InternalAxiosRequestConfig } from 'axios';
+import { message as antdMessage } from 'antd';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api/v1';
 
@@ -14,48 +15,120 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Retry 5xx + network error 1 lần với 500ms delay
-let isRetrying = false;
+// ── Retry logic ────────────────────────────────────────────────
+// Retry tối đa 3 lần cho network error / 5xx, với exponential backoff (1s, 2s, 4s)
+const MAX_RETRIES = 3;
+const BACKOFF_BASE_MS = 1000;
+
+interface RetryConfig extends InternalAxiosRequestConfig {
+  _retryCount?: number;
+}
+
+let offlineNotificationShown = false;
+
+function isRetryableError(err: AxiosError): boolean {
+  // Network error (không có response — server chết, mất mạng, DNS fail)
+  if (err.code === 'ERR_NETWORK' || err.code === 'ECONNABORTED') return true;
+  // 5xx — server error tạm thời
+  if (err.response?.status && err.response.status >= 500) return true;
+  return false;
+}
 
 api.interceptors.response.use(
-  (res) => res,
+  (res) => {
+    // Nếu đã online lại, xoá thông báo offline
+    if (offlineNotificationShown) {
+      antdMessage.destroy('offline');
+      offlineNotificationShown = false;
+    }
+    return res;
+  },
   async (err: AxiosError) => {
-    const config = err.config as InternalAxiosRequestConfig & { _retried?: boolean };
+    const config = err.config as RetryConfig;
+    const retryCount = config?._retryCount ?? 0;
 
-    // 401 → redirect login (không retry)
+    // 401 → xoá token, không redirect (app không có route /login)
+    // React Query sẽ tự retry khi token mới được set bởi devLogin
     if (err.response?.status === 401) {
       localStorage.removeItem('token');
-      window.location.href = '/login';
       return Promise.reject(err);
     }
 
-    // Retry 1 lần cho 5xx hoặc network error (server restart, timeout)
-    const is5xx = err.response?.status ? err.response.status >= 500 : false;
-    const isNetworkErr = err.code === 'ERR_NETWORK' || err.code === 'ECONNABORTED';
-    const shouldRetry = (is5xx || isNetworkErr) && !config._retried && !isRetrying;
+    // Retry nếu có thể và chưa vượt quá giới hạn
+    if (isRetryableError(err) && retryCount < MAX_RETRIES) {
+      config._retryCount = retryCount + 1;
+      const delay = BACKOFF_BASE_MS * Math.pow(2, retryCount); // 1s, 2s, 4s
 
-    if (shouldRetry) {
-      config._retried = true;
-      isRetrying = true;
-      await new Promise((r) => setTimeout(r, 500));
-      isRetrying = false;
+      // Hiển thị thông báo mất kết nối (chỉ 1 lần)
+      if (!offlineNotificationShown && err.code === 'ERR_NETWORK') {
+        offlineNotificationShown = true;
+        antdMessage.open({
+          key: 'offline',
+          type: 'warning',
+          content: 'Không thể kết nối đến máy chủ. Đang thử lại...',
+          duration: 0, // không tự tắt
+        });
+      }
+
+      await new Promise((r) => setTimeout(r, delay));
       try {
-        return await api.request(config);
+        const res = await api.request(config);
+        if (offlineNotificationShown) {
+          antdMessage.destroy('offline');
+          offlineNotificationShown = false;
+        }
+        return res;
       } catch (retryErr) {
+        // Nếu retry cuối vẫn fail, propagate error
         return Promise.reject(retryErr);
       }
     }
 
-    // Log error
-    if (isNetworkErr) {
-      console.error('[API] Lỗi kết nối — không thể kết nối đến server. Kiểm tra server đang chạy.');
-    } else {
-      console.error('[API] Error:', err.response?.status, err.response?.data || err.message);
+    // Hết retry — hiện thông báo rõ ràng
+    if (isRetryableError(err)) {
+      if (offlineNotificationShown) {
+        antdMessage.destroy('offline');
+        offlineNotificationShown = false;
+      }
+      antdMessage.error({
+        content: 'Mất kết nối đến máy chủ. Vui lòng kiểm tra mạng và thử lại.',
+        duration: 5,
+      });
     }
 
     return Promise.reject(err);
   },
 );
+
+// ── Error message helper ───────────────────────────────────────
+// Chuẩn hoá error message cho UI — ưu tiên message từ server, fallback theo loại lỗi
+export function getApiErrorMessage(err: unknown, fallback: string): string {
+  if (axios.isAxiosError(err)) {
+    const axiosErr = err as AxiosError<{ message?: string }>;
+    // Server trả message rõ ràng
+    const serverMsg = axiosErr.response?.data?.message;
+    if (serverMsg) return serverMsg;
+
+    // Network error — không có response
+    if (axiosErr.code === 'ERR_NETWORK' || axiosErr.code === 'ECONNABORTED') {
+      return 'Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối mạng.';
+    }
+
+    // Timeout
+    if (axiosErr.code === 'ECONNABORTED') {
+      return 'Yêu cầu hết thời gian chờ. Vui lòng thử lại.';
+    }
+
+    // Other HTTP errors
+    if (axiosErr.response?.status) {
+      const status = axiosErr.response.status;
+      if (status === 403) return 'Bạn không có quyền thực hiện thao tác này.';
+      if (status === 404) return 'Không tìm thấy dữ liệu.';
+      if (status >= 500) return 'Máy chủ gặp lỗi. Vui lòng thử lại sau.';
+    }
+  }
+  return fallback;
+}
 
 // Development-only login helper - NOT available in production builds
 export async function devLogin() {
@@ -76,7 +149,7 @@ export async function devLogin() {
       console.error('[devLogin] No token in response:', res.data);
     }
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Unknown error';
-    console.error('[devLogin] Failed:', message);
+    const msg = err instanceof Error ? err.message : 'Unknown error';
+    console.error('[devLogin] Failed:', msg);
   }
 }

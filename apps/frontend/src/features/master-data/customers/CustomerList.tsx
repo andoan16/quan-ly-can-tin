@@ -1,3 +1,4 @@
+import { getApiErrorMessage } from '@/api/client';
 import { useState, useEffect } from 'react';
 import { Table, Button, Input, Space, Modal, Form, Switch, message, Tag, InputNumber, Drawer, Descriptions, List, Typography, Upload, Alert } from 'antd';
 import { PlusOutlined, WalletOutlined, HistoryOutlined, UploadOutlined, DownloadOutlined, ReloadOutlined } from '@ant-design/icons';
@@ -63,8 +64,7 @@ export default function CustomerList() {
       queryClient.invalidateQueries({ queryKey: ['customers'] });
     },
     onError: (err: unknown) => {
-      const axiosErr = err as { response?: { data?: { message?: string } } };
-      message.error(axiosErr?.response?.data?.message || 'Thêm thất bại');
+            message.error(getApiErrorMessage(err, 'Thêm thất bại'));
     },
   });
 
@@ -79,8 +79,7 @@ export default function CustomerList() {
       queryClient.invalidateQueries({ queryKey: ['customers'] });
     },
     onError: (err: unknown) => {
-      const axiosErr = err as { response?: { data?: { message?: string } } };
-      message.error(axiosErr?.response?.data?.message || 'Cập nhật thất bại');
+            message.error(getApiErrorMessage(err, 'Cập nhật thất bại'));
     },
   });
 
@@ -96,8 +95,7 @@ export default function CustomerList() {
       queryClient.invalidateQueries({ queryKey: ['customer-topups'] });
     },
     onError: (err: unknown) => {
-      const axiosErr = err as { response?: { data?: { message?: string } } };
-      message.error(axiosErr?.response?.data?.message || 'Nạp tiền thất bại');
+            message.error(getApiErrorMessage(err, 'Nạp tiền thất bại'));
     },
   });
 
@@ -117,8 +115,7 @@ export default function CustomerList() {
       queryClient.invalidateQueries({ queryKey: ['customers'] });
     },
     onError: (err: unknown) => {
-      const axiosErr = err as { response?: { data?: { message?: string } } };
-      message.error(axiosErr?.response?.data?.message || 'Import thất bại');
+            message.error(getApiErrorMessage(err, 'Import thất bại'));
     },
   });
 

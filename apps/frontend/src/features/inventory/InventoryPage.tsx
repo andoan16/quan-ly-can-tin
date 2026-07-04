@@ -1,3 +1,4 @@
+import { getApiErrorMessage } from '@/api/client';
 import { useState } from 'react';
 import { Tabs, Card, Button, Input, Select, InputNumber, message, Table, Tag, Space, Alert } from 'antd';
 import { ReloadOutlined } from '@ant-design/icons';
@@ -58,7 +59,7 @@ export default function InventoryPage() {
     },
     onError: (err: unknown) => {
       const axiosErr = err as { response?: { data?: { message?: string; errors?: { fieldErrors?: Record<string, string[]> } } } };
-      const msg = axiosErr?.response?.data?.message || axiosErr?.response?.data?.errors?.fieldErrors?.productId?.[0] || (err instanceof Error ? err.message : 'Nhập kho thất bại');
+      const msg = axiosErr?.response?.data?.errors?.fieldErrors?.productId?.[0] || getApiErrorMessage(err, 'Nhập kho thất bại');
       message.error(msg);
       console.error('Stock-in error:', axiosErr?.response?.data || err);
     },

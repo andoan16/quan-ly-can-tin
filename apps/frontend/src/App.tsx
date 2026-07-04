@@ -9,6 +9,7 @@ import {
 } from '@ant-design/icons';
 import { devLogin } from './api/client';
 import ErrorBoundary from './components/ErrorBoundary';
+import ConnectionStatus from './components/ConnectionStatus';
 import MasterDataPage from './features/master-data/MasterDataPage';
 import PosPage from './features/pos/PosPage';
 import InventoryPage from './features/inventory/InventoryPage';
@@ -82,7 +83,8 @@ function App() {
             <span style={{ fontSize: 13, color: '#666' }}>Admin</span>
           </Header>
           <Content style={{ padding: 12, background: '#f5f5f5', overflow: 'auto' }}>
-            <div style={{ background: '#fff', padding: 12, borderRadius: 6 }}>
+            <ConnectionStatus />
+            <div style={{ background: '#fff', padding: 12, borderRadius: 6, marginTop: 8 }}>
               <ErrorBoundary>
                 {activeTab === 'master' && <MasterDataPage />}
                 {activeTab === 'pos' && <PosPage />}

@@ -1,3 +1,4 @@
+import { getApiErrorMessage } from '@/api/client';
 import { useState } from 'react';
 import { Card, Button, Input, Table, Tag, Space, message, Popconfirm, Modal, Typography, InputNumber } from 'antd';
 import { PlusOutlined, CheckOutlined, DeleteOutlined, EyeOutlined, ReloadOutlined } from '@ant-design/icons';
@@ -58,8 +59,7 @@ export default function StockCountTab() {
       setDetail(null);
     },
     onError: (err: unknown) => {
-      const axiosErr = err as { response?: { data?: { message?: string } } };
-      message.error(axiosErr?.response?.data?.message || 'Hoàn tất kiểm kê thất bại');
+            message.error(getApiErrorMessage(err, 'Hoàn tất kiểm kê thất bại'));
     },
   });
 
