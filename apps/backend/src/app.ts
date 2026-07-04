@@ -54,7 +54,9 @@ export function createApp() {
     message: { success: false, message: 'Quá nhiều lần đăng nhập thất bại. Vui lòng thử lại sau 1 phút.' },
   });
 
+  // Health check — Railway healthcheck path /api/v1/health
   app.get('/health', (_req, res) => res.json({ ok: true }));
+  app.get('/api/v1/health', (_req, res) => res.json({ ok: true }));
 
   app.use('/api/v1/auth', loginLimiter, authRouter);
   app.use('/api/v1/customer-groups', customerGroupRouter);
