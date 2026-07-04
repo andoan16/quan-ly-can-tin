@@ -1,12 +1,13 @@
 import { getApiErrorMessage } from '@/api/client';
 import { useState, useEffect, useRef } from 'react';
 import { Row, Col, Card, Input, Button, List, Typography, Tag, Modal, message, Empty, Alert, Statistic, Spin, InputNumber } from 'antd';
-import { PrinterOutlined } from '@ant-design/icons';
+import { PrinterOutlined, FilePdfOutlined } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { productApi, customerApi, orderApi } from '@/api/endpoints';
 import type { Order, Product, Customer } from '@/api/endpoints';
 import { usePosStore } from '@/stores/posStore';
 import Receipt from './Receipt';
+import { buildReceiptHTML } from './receiptHtml';
 
 const { Text, Title } = Typography;
 
@@ -372,14 +373,47 @@ export default function PosPage() {
         </div>
       </Modal>
 
-      {/* Modal hiển thị hóa đơn + nút in */}
+      {/* Modal hiển thị hóa đơn + nút in + nút PDF */}
       <Modal
         title="Hóa đơn"
         open={!!receiptOrder}
         onCancel={() => setReceiptOrder(null)}
         footer={[
           <Button key="close" onClick={() => setReceiptOrder(null)}>Đóng</Button>,
-          <Button key="print" type="primary" icon={<PrinterOutlined />} onClick={() => window.print()}>
+          <Button
+            key="pdf"
+            icon={<FilePdfOutlined />}
+            onClick={async () => {
+              if (!receiptOrder) return;
+              const html = buildReceiptHTML(receiptOrder);
+              const fileName = `HoaDon-${receiptOrder.code}.pdf`;
+              if (window.electronAPI?.printToPDF) {
+                const result = await window.electronAPI.printToPDF(html, fileName);
+                if (result) message.success(`Đã xuất PDF: ${result}`);
+                else message.error('Xuất PDF thất bại');
+              } else {
+                message.warning('Xuất PDF chỉ khả dụng trong app desktop');
+              }
+            }}
+          >
+            PDF
+          </Button>,
+          <Button
+            key="print"
+            type="primary"
+            icon={<PrinterOutlined />}
+            onClick={async () => {
+              if (!receiptOrder) return;
+              const html = buildReceiptHTML(receiptOrder);
+              if (window.electronAPI?.printReceipt) {
+                const ok = await window.electronAPI.printReceipt(html);
+                if (!ok) message.error('In thất bại');
+              } else {
+                // Fallback: window.print() cho trình duyệt
+                window.print();
+              }
+            }}
+          >
             In hóa đơn
           </Button>,
         ]}
