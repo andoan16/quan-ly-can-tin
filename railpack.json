@@ -1,0 +1,6 @@
+{
+  "providers": ["node"],
+  "build": {
+    "rootDirectory": "apps/backend"
+  }
+}
