@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { config } from '../config';
 import { errorLogger } from '../logger';
+import { Prisma } from '@prisma/client';
 
 interface AppError extends Error {
   status?: number;
@@ -26,6 +27,28 @@ export function errorHandler(err: unknown, req: Request, res: Response, _next: N
     // Only expose error details in development
     if (config.nodeEnv !== 'production' || status < 500) {
       message = appErr.message || message;
+    }
+  }
+
+  // Prisma errors — chuyển thành 4xx phù hợp
+  if (err instanceof Prisma.PrismaClientKnownRequestError) {
+    switch (err.code) {
+      case 'P2023': // Invalid UUID
+        status = 400;
+        message = 'ID không hợp lệ (UUID)';
+        break;
+      case 'P2025': // Record not found
+        status = 404;
+        message = 'Không tìm thấy bản ghi';
+        break;
+      case 'P2002': // Unique constraint
+        status = 409;
+        message = 'Dữ liệu đã tồn tại (trùng khóa)';
+        break;
+      case 'P2003': // Foreign key constraint
+        status = 400;
+        message = 'Không thể xóa — dữ liệu đang được sử dụng';
+        break;
     }
   }
 
