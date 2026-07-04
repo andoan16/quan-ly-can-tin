@@ -1,7 +1,9 @@
 import { app, BrowserWindow, ipcMain } from 'electron';
 import path from 'path';
 
-const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
+// Production: load file đã build. Development: load vite dev server.
+// Khi chạy `npm run prod` (NODE_ENV=production, chưa packaged) → cũng load file.
+const isDev = process.env.NODE_ENV === 'development';
 
 function createWindow() {
   const win = new BrowserWindow({
